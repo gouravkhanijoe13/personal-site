@@ -628,36 +628,85 @@
       z-index: 0;
     }
 
-    /* ── HERO BLOB ── */
-    .hero-blob {
+    /* ── HERO BACKGROUND LAYER ── */
+    /* Deep space backdrop with colour — sits behind canvas */
+    #hero {
+      background: radial-gradient(ellipse at 55% 40%, #1a0f00 0%, #0a0a0a 65%);
+    }
+
+    /* ── HERO GLOW ORBS ── */
+    .hero-orbs {
       position: absolute;
-      top: 50%;
-      left: 38%;
-      transform: translate(-50%, -50%);
-      width: 560px;
-      height: 560px;
-      background: radial-gradient(
-        ellipse at 40% 40%,
-        rgba(255, 180, 84, 0.1) 0%,
-        rgba(255, 140, 60, 0.05) 40%,
-        transparent 70%
-      );
-      border-radius: 60% 40% 70% 30% / 50% 60% 40% 70%;
-      animation: blobMorph 14s ease-in-out infinite;
+      inset: 0;
       pointer-events: none;
       z-index: 0;
-      filter: blur(48px);
+      overflow: hidden;
+    }
+
+    /* Main amber glow — centreish */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0;
+      animation: orbPulse var(--dur, 18s) ease-in-out infinite var(--delay, 0s);
+    }
+
+    .orb-amber {
+      width: 640px; height: 640px;
+      top: 50%; left: 42%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(255,160,50,0.55) 0%, rgba(255,100,20,0.2) 50%, transparent 70%);
+      --dur: 16s; --delay: 0s;
+    }
+
+    .orb-cool {
+      width: 480px; height: 480px;
+      top: 20%; left: 75%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(100,160,255,0.3) 0%, rgba(60,100,200,0.1) 55%, transparent 70%);
+      --dur: 22s; --delay: -7s;
+    }
+
+    .orb-deep {
+      width: 350px; height: 350px;
+      top: 80%; left: 20%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(180,80,255,0.22) 0%, rgba(100,40,180,0.08) 55%, transparent 70%);
+      --dur: 26s; --delay: -12s;
+    }
+
+    /* Morphing shape on the amber orb */
+    .orb-amber {
+      border-radius: 60% 40% 70% 30% / 50% 60% 40% 70%;
+      animation: orbPulse 16s ease-in-out infinite, blobMorph 14s ease-in-out infinite;
+    }
+
+    @keyframes orbPulse {
+      0%, 100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1);    }
+      40%       { opacity: 1;    transform: translate(-50%, -50%) scale(1.06); }
+      70%       { opacity: 0.75; transform: translate(-50%, -50%) scale(0.94); }
+    }
+
+    /* cool + deep orbs use a simpler float */
+    .orb-cool  { animation: floatOrb 22s ease-in-out infinite -7s;  }
+    .orb-deep  { animation: floatOrb 26s ease-in-out infinite -12s; }
+
+    @keyframes floatOrb {
+      0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1)    translateY(0);   }
+      35%       { opacity: 0.9; transform: translate(-50%, -50%) scale(1.08) translateY(-20px); }
+      65%       { opacity: 0.5; transform: translate(-50%, -50%) scale(0.93) translateY(14px);  }
     }
 
     @keyframes blobMorph {
-      0%   { border-radius: 60% 40% 70% 30% / 50% 60% 40% 70%; transform: translate(-50%, -50%) scale(1)    rotate(0deg);  }
-      20%  { border-radius: 40% 60% 30% 70% / 70% 30% 60% 40%; transform: translate(-50%, -50%) scale(1.05) rotate(4deg);  }
-      45%  { border-radius: 70% 30% 50% 50% / 40% 70% 30% 60%; transform: translate(-50%, -50%) scale(0.95) rotate(-3deg); }
-      70%  { border-radius: 30% 70% 40% 60% / 60% 40% 70% 30%; transform: translate(-50%, -50%) scale(1.03) rotate(5deg);  }
-      100% { border-radius: 60% 40% 70% 30% / 50% 60% 40% 70%; transform: translate(-50%, -50%) scale(1)    rotate(0deg);  }
+      0%   { border-radius: 60% 40% 70% 30% / 50% 60% 40% 70%; }
+      20%  { border-radius: 40% 60% 30% 70% / 70% 30% 60% 40%; }
+      45%  { border-radius: 70% 30% 50% 50% / 40% 70% 30% 60%; }
+      70%  { border-radius: 30% 70% 40% 60% / 60% 40% 70% 30%; }
+      100% { border-radius: 60% 40% 70% 30% / 50% 60% 40% 70%; }
     }
 
-    /* Ensure hero children sit above blob + canvas */
+    /* Ensure hero children sit above orbs + canvas */
     .hero-headline,
     .hero-contacts,
     .hero-photo,
@@ -912,8 +961,12 @@
   <section id="hero">
     <!-- Starfield canvas (rendered behind everything) -->
     <canvas id="starfield"></canvas>
-    <!-- Ambient blob glow -->
-    <div class="hero-blob"></div>
+    <!-- Layered glow orbs -->
+    <div class="hero-orbs">
+      <div class="orb orb-amber"></div>
+      <div class="orb orb-cool"></div>
+      <div class="orb orb-deep"></div>
+    </div>
 
     <div class="hero-headline fade-in">
       <p class="hero-name">Gourav Khanijoe</p>
@@ -1111,14 +1164,16 @@
 
       function seed() {
         stars = [];
-        const count = Math.floor((W * H) / 7000); // density scales with area
+        const count = Math.floor((W * H) / 4500); // denser field
         for (let i = 0; i < count; i++) {
+          const big = Math.random() < 0.06; // 6% are bright accent stars
           stars.push({
             x:     Math.random() * W,
             y:     Math.random() * H,
-            r:     Math.random() * 1.2 + 0.2,
-            speed: Math.random() * 0.4 + 0.05,
+            r:     big ? Math.random() * 1.6 + 1.2 : Math.random() * 1.0 + 0.3,
+            speed: Math.random() * 0.5 + 0.08,
             phase: Math.random() * Math.PI * 2,
+            bright: big,
           });
         }
       }
@@ -1127,11 +1182,23 @@
         ctx.clearRect(0, 0, W, H);
         const ts = t * 0.001;
         for (const s of stars) {
-          const alpha = 0.1 + 0.25 * (0.5 + 0.5 * Math.sin(ts * s.speed + s.phase));
+          const base  = s.bright ? 0.55 : 0.18;
+          const range = s.bright ? 0.45 : 0.40;
+          const alpha = base + range * (0.5 + 0.5 * Math.sin(ts * s.speed + s.phase));
           ctx.beginPath();
           ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(245,245,240,${alpha.toFixed(3)})`;
+          // bright stars get a warm tint, small ones stay white
+          ctx.fillStyle = s.bright
+            ? `rgba(255,220,160,${alpha.toFixed(3)})`
+            : `rgba(245,245,240,${alpha.toFixed(3)})`;
           ctx.fill();
+          // glow halo on accent stars
+          if (s.bright) {
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255,200,120,${(alpha * 0.12).toFixed(3)})`;
+            ctx.fill();
+          }
         }
         raf = requestAnimationFrame(draw);
       }
