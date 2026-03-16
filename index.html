@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Bebas+Neue&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -616,22 +618,57 @@
 
     .contact-links a:hover { color: var(--amber); }
 
+    /* ── STARFIELD CANVAS ── */
+    #starfield {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── HERO BLOB ── */
+    .hero-blob {
+      position: absolute;
+      top: 50%;
+      left: 38%;
+      transform: translate(-50%, -50%);
+      width: 560px;
+      height: 560px;
+      background: radial-gradient(
+        ellipse at 40% 40%,
+        rgba(255, 180, 84, 0.1) 0%,
+        rgba(255, 140, 60, 0.05) 40%,
+        transparent 70%
+      );
+      border-radius: 60% 40% 70% 30% / 50% 60% 40% 70%;
+      animation: blobMorph 14s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(48px);
+    }
+
+    @keyframes blobMorph {
+      0%   { border-radius: 60% 40% 70% 30% / 50% 60% 40% 70%; transform: translate(-50%, -50%) scale(1)    rotate(0deg);  }
+      20%  { border-radius: 40% 60% 30% 70% / 70% 30% 60% 40%; transform: translate(-50%, -50%) scale(1.05) rotate(4deg);  }
+      45%  { border-radius: 70% 30% 50% 50% / 40% 70% 30% 60%; transform: translate(-50%, -50%) scale(0.95) rotate(-3deg); }
+      70%  { border-radius: 30% 70% 40% 60% / 60% 40% 70% 30%; transform: translate(-50%, -50%) scale(1.03) rotate(5deg);  }
+      100% { border-radius: 60% 40% 70% 30% / 50% 60% 40% 70%; transform: translate(-50%, -50%) scale(1)    rotate(0deg);  }
+    }
+
+    /* Ensure hero children sit above blob + canvas */
+    .hero-headline,
+    .hero-contacts,
+    .hero-photo,
+    .scroll-hint { position: relative; z-index: 1; }
+
     /* ── SECTION FADE-IN ── */
+    /* Initial hidden state — GSAP handles reveal animation */
     .fade-in {
       opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.7s ease, transform 0.7s ease;
+      transform: translateY(32px);
     }
-
-    .fade-in.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .fade-in-delay-1 { transition-delay: 0.1s; }
-    .fade-in-delay-2 { transition-delay: 0.2s; }
-    .fade-in-delay-3 { transition-delay: 0.3s; }
-    .fade-in-delay-4 { transition-delay: 0.4s; }
 
     /* ── SCROLLBAR ── */
     ::-webkit-scrollbar { width: 3px; }
@@ -873,6 +910,11 @@
 
   <!-- HERO -->
   <section id="hero">
+    <!-- Starfield canvas (rendered behind everything) -->
+    <canvas id="starfield"></canvas>
+    <!-- Ambient blob glow -->
+    <div class="hero-blob"></div>
+
     <div class="hero-headline fade-in">
       <p class="hero-name">Gourav Khanijoe</p>
       <p class="hero-tagline">Doing <em>HARD</em> things. Solving <em>HARD</em> problems. <em>CONSISTENTLY</em>.</p>
@@ -1054,31 +1096,127 @@
   </section>
 
   <script>
-    // ── INTERSECTION OBSERVER for fade-ins ──
-    const fadeEls = document.querySelectorAll('.fade-in');
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) e.target.classList.add('visible');
-      });
-    }, { threshold: 0.15 });
-    fadeEls.forEach(el => observer.observe(el));
+    // ══════════════════════════════════════════
+    // STARFIELD CANVAS
+    // ══════════════════════════════════════════
+    (function () {
+      const canvas = document.getElementById('starfield');
+      const ctx    = canvas.getContext('2d');
+      let W, H, stars = [], raf;
 
-    // ── SECTION DOTS ──
+      function resize() {
+        W = canvas.width  = canvas.offsetWidth;
+        H = canvas.height = canvas.offsetHeight;
+      }
+
+      function seed() {
+        stars = [];
+        const count = Math.floor((W * H) / 7000); // density scales with area
+        for (let i = 0; i < count; i++) {
+          stars.push({
+            x:     Math.random() * W,
+            y:     Math.random() * H,
+            r:     Math.random() * 1.2 + 0.2,
+            speed: Math.random() * 0.4 + 0.05,
+            phase: Math.random() * Math.PI * 2,
+          });
+        }
+      }
+
+      function draw(t) {
+        ctx.clearRect(0, 0, W, H);
+        const ts = t * 0.001;
+        for (const s of stars) {
+          const alpha = 0.1 + 0.25 * (0.5 + 0.5 * Math.sin(ts * s.speed + s.phase));
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(245,245,240,${alpha.toFixed(3)})`;
+          ctx.fill();
+        }
+        raf = requestAnimationFrame(draw);
+      }
+
+      window.addEventListener('resize', () => { resize(); seed(); });
+      resize();
+      seed();
+      raf = requestAnimationFrame(draw);
+    })();
+
+
+    // ══════════════════════════════════════════
+    // GSAP SCROLL ANIMATIONS  (waits for GSAP CDN)
+    // ══════════════════════════════════════════
+    function initGSAP() {
+      gsap.registerPlugin(ScrollTrigger);
+
+      // delay map for staggered siblings
+      const delayMap = { 'fade-in-delay-1': 0.12, 'fade-in-delay-2': 0.22, 'fade-in-delay-3': 0.32, 'fade-in-delay-4': 0.42 };
+
+      document.querySelectorAll('.fade-in').forEach(el => {
+        // Hero elements are handled separately below
+        if (el.closest('#hero')) return;
+
+        let delay = 0;
+        for (const [cls, val] of Object.entries(delayMap)) {
+          if (el.classList.contains(cls)) { delay = val; break; }
+        }
+
+        gsap.to(el, {
+          opacity: 1,
+          y: 0,
+          duration: 0.85,
+          delay,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: el.closest('section') || el,
+            start: 'top 78%',
+            once: true,
+          }
+        });
+      });
+
+      // Hero: staggered fade-in on load
+      gsap.to('#hero .fade-in', {
+        opacity: 1,
+        y: 0,
+        duration: 1.1,
+        ease: 'power2.out',
+        stagger: 0.18,
+        delay: 0.2,
+      });
+    }
+
+    // Kick off GSAP setup once scripts are ready
+    window.addEventListener('load', () => {
+      if (typeof gsap !== 'undefined') {
+        initGSAP();
+      } else {
+        // Fallback: plain CSS reveal if GSAP fails to load
+        document.querySelectorAll('.fade-in').forEach(el => {
+          el.style.transition = 'opacity 0.7s ease, transform 0.7s ease';
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        });
+      }
+    });
+
+
+    // ══════════════════════════════════════════
+    // SECTION DOTS + NAV ACTIVE STATE
+    // ══════════════════════════════════════════
     const sections = document.querySelectorAll('section');
-    const dots = document.querySelectorAll('.dot');
+    const dots     = document.querySelectorAll('.dot');
 
     const sectionObserver = new IntersectionObserver((entries) => {
       entries.forEach(e => {
         if (e.isIntersecting) {
           dots.forEach(d => d.classList.remove('active'));
-          const id = e.target.id;
+          const id  = e.target.id;
           const dot = document.querySelector(`.dot[data-section="${id}"]`);
           if (dot) dot.classList.add('active');
 
-          // Update nav active state
           document.querySelectorAll('.nav-links a').forEach(a => {
-            a.classList.remove('active');
-            if (a.getAttribute('href') === `#${id}`) a.classList.add('active');
+            a.classList.toggle('active', a.getAttribute('href') === `#${id}`);
           });
         }
       });
@@ -1086,44 +1224,40 @@
 
     sections.forEach(s => sectionObserver.observe(s));
 
-    // ── DOT CLICK NAVIGATION ──
     dots.forEach(dot => {
       dot.addEventListener('click', () => {
-        const id = dot.dataset.section;
-        document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        document.getElementById(dot.dataset.section)?.scrollIntoView({ behavior: 'smooth' });
       });
     });
 
-    // ── NAV LINK SMOOTH SCROLL ──
+
+    // ══════════════════════════════════════════
+    // NAV SMOOTH SCROLL
+    // ══════════════════════════════════════════
     document.querySelectorAll('a[href^="#"]').forEach(a => {
       a.addEventListener('click', e => {
-        e.preventDefault();
         const target = document.querySelector(a.getAttribute('href'));
-        if (target) target.scrollIntoView({ behavior: 'smooth' });
+        if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
       });
     });
 
-    // ── FORM SUBMIT (placeholder) ──
+
+    // ══════════════════════════════════════════
+    // CONTACT FORM
+    // ══════════════════════════════════════════
     function handleSubmit(e) {
       e.preventDefault();
       const btn = e.target.querySelector('.form-submit');
       btn.textContent = 'Sent ✓';
       btn.style.borderColor = 'var(--amber)';
-      btn.style.color = 'var(--amber)';
+      btn.style.color       = 'var(--amber)';
       setTimeout(() => {
-        btn.textContent = 'Send message →';
+        btn.textContent       = 'Send message →';
         btn.style.borderColor = '';
-        btn.style.color = '';
+        btn.style.color       = '';
         e.target.reset();
       }, 3000);
     }
-
-    // ── TRIGGER HERO FADE-IN ON LOAD ──
-    window.addEventListener('load', () => {
-      document.querySelectorAll('#hero .fade-in').forEach(el => {
-        el.classList.add('visible');
-      });
-    });
   </script>
 </body>
 </html>
