@@ -1312,18 +1312,57 @@
     // ══════════════════════════════════════════
     // CONTACT FORM
     // ══════════════════════════════════════════
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
       e.preventDefault();
-      const btn = e.target.querySelector('.form-submit');
-      btn.textContent = 'Sent ✓';
-      btn.style.borderColor = 'var(--amber)';
-      btn.style.color       = 'var(--amber)';
-      setTimeout(() => {
-        btn.textContent       = 'Send message →';
-        btn.style.borderColor = '';
-        btn.style.color       = '';
-        e.target.reset();
-      }, 3000);
+      const form = e.target;
+      const btn  = form.querySelector('.form-submit');
+
+      const name    = form.querySelector('#name').value.trim();
+      const email   = form.querySelector('#email').value.trim();
+      const message = form.querySelector('#message').value.trim();
+
+      btn.textContent  = 'Sending…';
+      btn.disabled     = true;
+
+      try {
+        const res = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, message }),
+        });
+
+        if (res.ok) {
+          btn.textContent       = 'Sent ✓';
+          btn.style.borderColor = 'var(--amber)';
+          btn.style.color       = 'var(--amber)';
+          form.reset();
+          setTimeout(() => {
+            btn.textContent       = 'Send message →';
+            btn.style.borderColor = '';
+            btn.style.color       = '';
+          }, 3000);
+        } else {
+          btn.textContent       = 'Failed — try again';
+          btn.style.borderColor = '#e55';
+          btn.style.color       = '#e55';
+          setTimeout(() => {
+            btn.textContent       = 'Send message →';
+            btn.style.borderColor = '';
+            btn.style.color       = '';
+          }, 4000);
+        }
+      } catch {
+        btn.textContent       = 'Failed — try again';
+        btn.style.borderColor = '#e55';
+        btn.style.color       = '#e55';
+        setTimeout(() => {
+          btn.textContent       = 'Send message →';
+          btn.style.borderColor = '';
+          btn.style.color       = '';
+        }, 4000);
+      } finally {
+        btn.disabled = false;
+      }
     }
   </script>
 </body>
